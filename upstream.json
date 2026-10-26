@@ -1,0 +1,81 @@
+{
+  "version": "5.3",
+  "patchlevel": 20,
+  "repack": 0,
+  "signing_key": "7C0135FB088AAF6C66C650B9BB5869F064EA74AB",
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64"
+  ],
+  "builder": {
+    "alpine": "alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a",
+    "macos_deployment_target": "12.0"
+  },
+  "sources": [
+    {
+      "path": "bash-5.3.tar.gz"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-001"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-002"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-003"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-004"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-005"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-006"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-007"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-008"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-009"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-010"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-011"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-012"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-013"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-014"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-015"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-016"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-017"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-018"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-019"
+    },
+    {
+      "path": "bash-5.3-patches/bash53-020"
+    }
+  ]
+}
