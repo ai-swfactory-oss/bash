@@ -4,7 +4,8 @@
 # Named test, per platform: installs the packed tarballs into a scratch project,
 # as a consumer would, and checks that binaryPath() resolves to an executable
 # bash that reports upstreamVersion, runs bash 4+ features, and links the way
-# the build promises (static on linux; system libraries only on darwin).
+# the build promises (static on linux: ldd reports it static and readelf -d
+# lists no NEEDED entries; system libraries only on darwin).
 #
 #   scripts/smoke.sh <tgzdir> <platform>      e.g. dist/tgz linux-x64
 set -euo pipefail
@@ -67,10 +68,20 @@ echo "$got"
 echo "== linkage"
 case "$platform" in
   linux-*)
-    if ldd "$bin" >ldd.txt 2>&1; then
-      cat ldd.txt; echo "smoke: $bin is dynamically linked" >&2; exit 1
-    fi
+    # Decide from what ldd prints, not its exit status: for a static-PIE
+    # binary (Alpine's default) glibc's ldd prints "statically linked" and
+    # exits 0; for a non-PIE static binary it prints "not a dynamic
+    # executable" and exits 1.
+    ldd "$bin" >ldd.txt 2>&1 || true
     cat ldd.txt
+    if ! grep -qE 'statically linked|not a dynamic executable' ldd.txt; then
+      echo "smoke: $bin is dynamically linked (ldd lists libraries)" >&2; exit 1
+    fi
+    readelf -d "$bin" >readelf.txt 2>&1 || true
+    if grep -q 'NEEDED' readelf.txt; then
+      cat readelf.txt; echo "smoke: $bin has NEEDED entries in its dynamic section" >&2; exit 1
+    fi
+    echo "readelf -d: no NEEDED entries"
     ;;
   darwin-*)
     otool -L "$bin" >otool.txt
