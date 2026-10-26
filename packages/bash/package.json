@@ -1,0 +1,25 @@
+{
+  "name": "@ai-swfactory-oss/bash",
+  "description": "GNU bash, built from the signed GNU source and official patches, as a native binary for your platform: no download at install time, no install scripts",
+  "keywords": [
+    "bash",
+    "shell",
+    "gnu"
+  ],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "bin": {
+    "bash": "bin/bash.js"
+  },
+  "files": [
+    "bin/bash.js",
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

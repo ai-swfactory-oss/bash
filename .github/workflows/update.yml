@@ -1,0 +1,134 @@
+name: update
+
+# Daily: if GNU has published a newer official patch for the pinned bash
+# version (https://ftp.gnu.org/gnu/bash/bash-<version>-patches/), add every new
+# patch to upstream.json, raise patchlevel, and open a pull request; build.yml
+# then fetches every file, refusing any whose GNU signature does not verify
+# against the key fingerprint pinned in this repository, and builds and tests
+# the result on every platform. Merging publishes (build.yml runs on the
+# push to main). Then make sure the packages for main's upstream.json are
+# published: every successful publish ends with a GitHub release v<version>,
+# so a missing release means "not published yet", and a failed build is
+# retried every day until it succeeds.
+#
+# A new bash minor or major (bash-<next>.tar.gz) is not followed
+# automatically: the run fails with a message, so the failures workflow opens
+# an issue and a maintainer bumps version, sources and patchlevel by hand.
+#
+# Monthly: keep the schedule alive. GitHub disables scheduled workflows after
+# 60 days without repository activity.
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+    - cron: "41 5 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+  actions: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    outputs:
+      missing: ${{ steps.check.outputs.missing }}
+      sha: ${{ steps.check.outputs.sha }}
+      bump: ${{ steps.bump.outputs.sha }}
+      branch: ${{ steps.bump.outputs.branch }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Is main's version published?
+        id: check
+        run: |
+          tag="v$(bash scripts/pkgver.sh)"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "missing=false" >> "$GITHUB_OUTPUT"; echo "$tag already released"
+          else
+            echo "missing=true" >> "$GITHUB_OUTPUT"; echo "$tag not released: building"
+          fi
+
+      - name: Keepalive (monthly)
+        if: github.event.schedule == '41 5 1 * *'
+        run: gh api -X PUT "repos/$GH_REPO/actions/workflows/update.yml/enable"
+
+      - name: Follow new official patches
+        id: follow
+        run: |
+          version=$(jq -er .version upstream.json)
+          tag=${version//./}
+          current=$(jq -er .patchlevel upstream.json)
+          index=$(curl -fsSL "https://ftp.gnu.org/gnu/bash/")
+          newest_minor=$(grep -oE 'bash-[0-9]+\.[0-9]+\.tar\.gz"' <<<"$index" | grep -oE '[0-9]+\.[0-9]+' | sort -V | tail -n1)
+          if [ "$newest_minor" != "$version" ] && [ "$(printf '%s\n%s\n' "$version" "$newest_minor" | sort -V | tail -n1)" = "$newest_minor" ]; then
+            echo "GNU released bash $newest_minor; this repository pins $version. Bump version, sources and patchlevel by hand." >&2
+            exit 1
+          fi
+          patches=$(curl -fsSL "https://ftp.gnu.org/gnu/bash/bash-$version-patches/")
+          latest=$(grep -oE "bash$tag-[0-9]{3}\"" <<<"$patches" | grep -oE '[0-9]{3}' | sort -n | tail -n1)
+          latest=$((10#${latest:-0}))
+          if [ "$latest" -le "$current" ]; then
+            echo "patchlevel $current is current"; exit 0
+          fi
+          echo "GNU has patches $((current + 1)) to $latest for bash $version"
+          cp upstream.json upstream.json.new
+          for n in $(seq $((current + 1)) "$latest"); do
+            path=$(printf 'bash-%s-patches/bash%s-%03d' "$version" "$tag" "$n")
+            jq --arg p "$path" '.sources += [{path: $p}]' upstream.json.new > upstream.json.tmp
+            mv upstream.json.tmp upstream.json.new
+          done
+          jq --argjson l "$latest" '.patchlevel = $l | .repack = 0' upstream.json.new > upstream.json
+          rm upstream.json.new
+          cat upstream.json
+          echo "version=$(bash scripts/pkgver.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Open the bump pull request
+        id: bump
+        if: steps.follow.outputs.version != ''
+        env:
+          VERSION: ${{ steps.follow.outputs.version }}
+        run: |
+          branch="update/bash-$VERSION"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          if gh pr list --head "$branch" --state open --json number --jq '.[0].number' | grep -q .; then
+            echo "pull request for $branch already open"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "chore: update bash to $VERSION"
+          git push --force origin "$branch"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          gh pr create --head "$branch" --base main --title "chore: update bash to $VERSION" \
+            --body "GNU published new official bash patches. upstream.json lists them; the build refuses any file whose GNU signature does not verify against the key fingerprint pinned in this repository. The update run that opened this pull request then built and tested the packages on every platform (pull requests opened with GITHUB_TOKEN start no pr workflow); merging publishes them."
+
+  test-bump:
+    needs: update
+    if: needs.update.outputs.bump != ''
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.update.outputs.bump }}
+      publish: false
+    secrets: inherit
+
+  build:
+    needs: update
+    if: needs.update.outputs.missing == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.update.outputs.sha }}
+      publish: true
+    secrets: inherit

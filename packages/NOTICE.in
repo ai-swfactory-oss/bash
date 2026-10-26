@@ -1,0 +1,18 @@
+GNU bash - the GNU Bourne Again SHell
+https://www.gnu.org/software/bash/
+Copyright (C) 1987-2025 Free Software Foundation, Inc.
+
+bash is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version (see LICENSE). It is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+The binary includes bash's bundled GNU readline and history libraries (also
+GPL-3.0-or-later) and, on linux, is statically linked against musl libc (MIT).
+
+This npm package is published by ai-swfactory-oss
+(https://github.com/ai-swfactory-oss/bash), which is not affiliated with the
+GNU project or the Free Software Foundation. It is built from the unmodified
+GNU source and official GNU patches; no other change is made. The package is
+distributed under GPL-3.0-or-later.
